@@ -1,8 +1,8 @@
 # trends_fetcher.py
 
-import requests
-import xml.etree.ElementTree as ET
 import os
+import requests
+import feedparser
 from dotenv import load_dotenv
 
 # بارگذاری تنظیمات از .env
@@ -11,13 +11,18 @@ BOT_TOKEN  = os.getenv("BALE_BOT_TOKEN")
 CHANNEL_ID = os.getenv("BALE_CHANNEL_ID")
 
 def fetch_iran_trends(n=5):
-    # RSS رسمی Google Trends برای ایران
     rss_url = "https://trends.google.com/trends/trendingsearches/daily/rss?geo=IR"
-    resp = requests.get(rss_url)
-    root = ET.fromstring(resp.content)
-    items = root.findall(".//item")
-    trends = [item.find("title").text for item in items[:n]]
-    return trends
+    headers = {"User-Agent": "Mozilla/5.0"}  # تقلید مرورگر
+    resp = requests.get(rss_url, headers=headers, timeout=10)
+    if resp.status_code != 200:
+        print(f"خطا در دریافت RSS: HTTP {resp.status_code}")
+        return []
+    # با feedparser پارس می‌کنیم
+    feed = feedparser.parse(resp.content)
+    if not feed.entries:
+        print("خطا: RSS entry پیدا نشد.")
+        return []
+    return [entry.title for entry in feed.entries[:n]]
 
 def post_to_bale(keywords):
     if not keywords:
